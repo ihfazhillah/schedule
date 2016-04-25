@@ -59,7 +59,18 @@ class Scheduler(object):
         increments then your job won't be run 60 times in between but
         only once.
         """
+        ## runnable_jobs adalah job yang akan di jalankan
+        ## me loop di job yang ada yang sudah dimasukkan ke variable
+        ## self.jobs dan mengecek apakah job harus dijalankan
+        ## should_run adalah property yang mereturn True ketika
+        ## job harus di jalankan,
+        ## pengecekan should_run adalah dengan : 
+        ## perbandingan waktu sekarang ini 'datetime.datetime().now()
+        ## lebih besar atau sama dengan job yang akan dijalankan 
         runnable_jobs = (job for job in self.jobs if job.should_run)
+        ## iterate di seluruh job yang sudah di sortir, dan jalankan
+        ## job dengan ketentuan job tesb bukan instance dari 
+        ## class CancleJob atau bukan merupakan class tsb
         for job in sorted(runnable_jobs):
             self._run_job(job)
 
@@ -72,11 +83,22 @@ class Scheduler(object):
         logger.info('Running *all* %i jobs with %is delay inbetween',
                     len(self.jobs), delay_seconds)
         for job in self.jobs:
+            ## Sama seperti diatas,
+            ## menjalankan job yang tidak di cancel
+            ## atau dalam kata lain yang tidak di jadikan
+            ## objek dari canceljob class
             self._run_job(job)
             time.sleep(delay_seconds)
 
     def clear(self):
         """Deletes all scheduled jobs."""
+        ## perbedaan del self.jobs
+        ## dengan del self.jobs[:]
+        ## yang awal menghapus seluruh objek self.jobs, jadi
+        ## kalau kita memanggil lagi self.jobs setelah melakukan
+        ## perintah yang pertama, maka akan keluar error
+        ## illa, maka akan mereturn list kosong
+        ##==> Noted <==
         del self.jobs[:]
 
     def cancel_job(self, job):
@@ -88,25 +110,50 @@ class Scheduler(object):
 
     def every(self, interval=1):
         """Schedule a new periodic job."""
+        ## ini menurut saya adalah triknya
+        ## yaitu mereturn class instance
+        ## membuat objek berupa job, kemudian kita tambahkan ke
+        ## list self.jobs yang nanti di cek apakah akan dijalankan
+        ## di hapus, atau yang lainnya
         job = Job(interval)
         self.jobs.append(job)
         return job
 
     def _run_job(self, job):
+        ## fungsi untuk menjalankan job
         ret = job.run()
+        ## variabel ret digunakan untuk menjalankan sekaligus
+        ## pengecekan job, dimana bila variable ret adalah
+        ## instance/objek dari class CancelJob atau
+        ## bahkan dia adalah class CancelJob maka
+        ## jalankan method cancle_job
         if isinstance(ret, CancelJob) or ret is CancelJob:
             self.cancel_job(job)
 
     @property
     def next_run(self):
         """Datetime when the next job should run."""
+        ## mereturn None bila self.jobs adalah list kosong
+        ## bila berisi job, maka akan mengembalikan job yang
+        ## paling kecil
         if not self.jobs:
             return None
         return min(self.jobs).next_run
+        ## next_run disini adalah property dari class Job
+        ## bukan dari class Sceduler
 
     @property
     def idle_seconds(self):
         """Number of seconds until `next_run`."""
+        ## total_seconds() adalah method dari datetime.timedelta yang 
+        ## digunakan untuk mentotal detik yang ada.
+        ## timedelta sendiri digunakan untuk mereprentasikan perbedaan
+        ## antara dua tanggal atau jam. timedelta sendiri
+        ## juga merupakan objek hasil pengurangan antara dua waktu
+        ## jadi yang terjadi disini adalah
+        ## membuat perbedaan antara waktu sekarang dengan
+        ## job yang selanjutnya akan dikerjakan
+        ## kemudian, ditotal detiknya
         return (self.next_run - datetime.datetime.now()).total_seconds()
 
 
@@ -129,11 +176,22 @@ class Job(object):
 
     def __repr__(self):
         def format_time(t):
+            ## formatting time sesuai time masukan,
+            ## menjadi
+            ## thn-bulan-tanggal jam:menit:detik
+            ## tapi, kalau time gak ada, maka stempelnya
+            ## menjadi ['never']
             return t.strftime('%Y-%m-%d %H:%M:%S') if t else '[never]'
 
-        timestats = '(last run: %s, next run: %s)' % (
-                    format_time(self.last_run), format_time(self.next_run))
-
+        timestats = '(last run: {last_run}, next run: {next_run})'.format(
+                    last_run=format_time(self.last_run),
+                    next_run=format_time(self.next_run))
+        
+        ## memberikan nama untuk job_func
+        ## ketika fungsi_job itu adalah fungsi atau class
+        ## maka dia akan mempunyai nama, maka jadikan itu nama jobnya
+        ## kalau tidak mis string, integer, list atau yang lainnya
+        ## maka berikan nama job sesuai dengan isinya
         if hasattr(self.job_func, '__name__'):
             job_func_name = self.job_func.__name__
         else:
@@ -141,7 +199,9 @@ class Job(object):
         args = [repr(x) for x in self.job_func.args]
         kwargs = ['%s=%s' % (k, repr(v))
                   for k, v in self.job_func.keywords.items()]
-        call_repr = job_func_name + '(' + ', '.join(args + kwargs) + ')'
+        call_repr = "{job_func_name}({args_kwargs})".format(
+                              job_func_name=job_func_name,
+                              args_kwargs=', '.join(args+kwargs))
 
         if self.at_time is not None:
             return 'Every %s %s at %s do %s %s' % (
@@ -285,6 +345,9 @@ class Job(object):
     @property
     def should_run(self):
         """True if the job should be run now."""
+        #==> dengan cara mengecek waktu sekarang 
+        #==> lebih besar atau sama dengan dengan
+        #==> self.next_run 
         return datetime.datetime.now() >= self.next_run
 
     def run(self):

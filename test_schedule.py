@@ -258,3 +258,6 @@ class SchedulerTests(unittest.TestCase):
 
         schedule.cancel_job(mj)
         assert len(schedule.jobs) == 0
+
+if __name__ == "__main__":
+    unittest.main()
