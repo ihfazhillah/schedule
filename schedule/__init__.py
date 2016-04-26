@@ -104,6 +104,9 @@ class Scheduler(object):
     def cancel_job(self, job):
         """Delete a scheduled job."""
         try:
+            ## karena self.jobs merupakan list
+            ## maka menghapusnya bisa dengan menggunakan
+            ## method remove
             self.jobs.remove(job)
         except ValueError:
             pass
@@ -206,6 +209,9 @@ class Job(object):
         if self.at_time is not None:
             return 'Every %s %s at %s do %s %s' % (
                    self.interval,
+                   ## bila interval adalah satu, maka unit harus di
+                   ## dihilangkan s jamaknya. minutes mjd minute
+                   ## kalau lebih maka biarkan. minutes -> minutes
                    self.unit[:-1] if self.interval == 1 else self.unit,
                    self.at_time, call_repr, timestats)
         else:
@@ -217,11 +223,13 @@ class Job(object):
     @property
     def second(self):
         assert self.interval == 1
+        ## resulting bount property
         return self.seconds
 
     @property
     def seconds(self):
         self.unit = 'seconds'
+        ## resulting main instance
         return self
 
     @property
@@ -312,7 +320,13 @@ class Job(object):
         Calling this is only valid for jobs scheduled to run every
         N day(s).
         """
+        ## untuk pengecekan bisa menggaunakan assertion daripada 
+        ## menggunakan if else
+        ## perbedaannya, ketika menggunakan assert
+        ## maka bila tidak true akan melempar exception
         assert self.unit in ('days', 'hours') or self.start_day
+        ## mengecek, bahwa self.unit hanya boleh days atau hours
+        ## atau menggunakan start_day
         hour, minute = [t for t in time_str.split(':')]
         minute = int(minute)
         if self.unit == 'days' or self.start_day:
@@ -353,8 +367,9 @@ class Job(object):
     def run(self):
         """Run the job and immediately reschedule it."""
         logger.info('Running job %s', self)
-        ret = self.job_func()
-        self.last_run = datetime.datetime.now()
+        ret = self.job_func() ## menjalankan job
+        self.last_run = datetime.datetime.now() ## memberi stempel
+        ## waktu yang job ini dijalankan
         self._schedule_next_run()
         return ret
 
@@ -363,6 +378,8 @@ class Job(object):
         # Allow *, ** magic temporarily:
         # pylint: disable=W0142
         assert self.unit in ('seconds', 'minutes', 'hours', 'days', 'weeks')
+        ## unpack dictionary untuk dipakai variabel=value
+        ## misal datetime.timedelta(seconds=3)
         self.period = datetime.timedelta(**{self.unit: self.interval})
         self.next_run = datetime.datetime.now() + self.period
         if self.start_day is not None:
@@ -377,10 +394,16 @@ class Job(object):
                 'sunday'
             )
             assert self.start_day in weekdays
+            ## mendapatkan urutan hari dimulai dari senin
+            ## index dimulai dengan angka nol
             weekday = weekdays.index(self.start_day)
-            days_ahead = weekday - self.next_run.weekday()
+            days_ahead = weekday - self.next_run.weekday() 
+            ## method weekday didapat dari datetime.datetime objek
+            ## untuk mendapatkan nomor urut weekday
             if days_ahead <= 0:  # Target day already happened this week
                 days_ahead += 7
+            ## menambahkan self.next_run dengan berapahari lagi digurangi
+            ## periode
             self.next_run += datetime.timedelta(days_ahead) - self.period
         if self.at_time is not None:
             assert self.unit in ('days', 'hours') or self.start_day is not None
